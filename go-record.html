@@ -6,7 +6,7 @@
       display: flex;
       width: 855px;
       height: 855px;
-      background-color: lightgrey;
+      background-color: goldenrod;
       flex-wrap: wrap;
       align-content: flex-start;
       }
@@ -21,41 +21,116 @@
       .even {
       background-color: grey;
       }
+
+      .board-lines-nw-corner {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='23' x2='23' y2='45' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='23' y1='23' x2='45' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-ne-corner {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='23' x2='0' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='23' y1='23' x2='23' y2='45' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-sw-corner {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='23' x2='23' y2='0' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='23' y1='23' x2='45' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-se-corner {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='23' x2='0' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='23' y1='23' x2='23' y2='0' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-n-edge {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='23' x2='23' y2='45' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='0' y1='23' x2='45' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-w-edge {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='0' x2='23' y2='45' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='23' y1='23' x2='45' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-e-edge {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='0' x2='23' y2='45' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='23' y1='23' x2='0' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-s-edge {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='0' y1='23' x2='45' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='23' y1='23' x2='23' y2='0' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-center {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='0' x2='23' y2='45' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='0' y1='23' x2='45' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e")
+      }
+      
+      .board-lines-star-point {
+      background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='23' y1='0' x2='23' y2='45' style='stroke: rgb(0,0,0);stroke-width: 1.25;'/%3e%3cline x1='0' y1='23' x2='45' y2='23' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3ccircle cx='23' cy='23' r='2' stroke='black' stroke-width='1.5' fill='black' /%3e%3c/svg%3e")
+      }
+
+      .board-line {
+      stroke: rgb(0,0,0);
+      stroke-width: 1.25;
+      }
+      
     </style>
   </head>
   <body>
     <div class="board">
+      <div class="point board-lines-nw-corner" on>
+      </div>
       <div class="point odd">
-        1
+        <img src="data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3e%3cpath d='M10,10 H90 L50,70'/%3e%3ctext y='90'%3e' %26apos; %23 %25 %26amp; %c2%bf %f0%9f%94%a3%3c/text%3e%3c/svg%3e" />
       </div>
       <div class="point even">
-        2
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNMTAsMTAgSDkwIEw1MCw3MCIvPjx0ZXh0IHk9IjkwIj4iICcgIyAlICZhbXA7IMK/IPCflKM8L3RleHQ+PC9zdmc+" />
       </div>
       <div class="point odd">
-        3
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M10,10 H90 L50,70"/><text y="90">" ' # % &amp; ¿ 🔣</text></svg>
       </div>
       <div class="point even">
-        4
+        <img src="data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' height='45' width='45'%3e%3cline x1='0' y1='0' x2='45' y2='45' style='stroke: rgb(0,0,0);stroke-width: 1.25;' /%3e%3c/svg%3e" />
       </div>
       <div class="point odd">
-        5
+        <svg height="45" width="45">
+          <line x1="23" y1="23" x2="23" y2="45" class="board-line" />
+          <line x1="23" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
+      </div>
+      <div class="point even">
+        <svg height="45" width="45">
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+          <line x1="23" y1="23" x2="23" y2="45" class="board-line" />
+        </svg>
+      </div>
+      <div class="point odd">
+        <svg height="45" width="45">
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+          <line x1="23" y1="23" x2="23" y2="45" class="board-line" />
+        </svg>
+      </div>
+      <div class="point even">
+        <svg height="45" width="45">
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+          <line x1="23" y1="23" x2="23" y2="45" class="board-line" />
+        </svg>
+      </div>
+      <div class="point odd">
+        <svg height="45" width="45">
+          <line x1="0" y1="23" x2="23" y2="23" class="board-line" />
+          <line x1="23" y1="23" x2="23" y2="45" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
         6
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-nw-corner">
         7
       </div>
-      <div class="point even">
+      <div class="point even board-lines-n-edge">
         8
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-n-edge">
         9
       </div>
-      <div class="point even">
+      <div class="point even board-lines-n-edge">
         10
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-ne-corner">
         11
       </div>
       <div class="point even">
@@ -83,36 +158,55 @@
         19
       </div>
       <div class="point even">
-        20
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="23" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
-        21
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
-        22
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
-        23
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
-        24
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="23" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
         25
       </div>
-      <div class="point even">
-        26
+      <div class="point even board-lines-w-edge">
+        <svg height="45" width="45">
+          <circle cx="23" cy="23" r="20" stroke="black" stroke-width="1.5" fill="black" />
+        </svg>
       </div>
-      <div class="point odd">
-        27
+      <div class="point odd board-lines-center">
+        <svg height="45" width="45">
+          <circle cx="23" cy="23" r="20" stroke="white" stroke-width="1.5" fill="white" />
+        </svg>
       </div>
-      <div class="point even">
+      <div class="point even board-lines-center">
         28
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-center">
         29
       </div>
-      <div class="point even">
+      <div class="point even board-lines-e-edge">
         30
       </div>
       <div class="point odd">
@@ -140,36 +234,52 @@
         38
       </div>
       <div class="point odd">
-        39
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="23" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
-        40
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
-        41
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+          <circle cx="23" cy="23" r="2" stroke="black" stroke-width="1.5" fill="black" />
+        </svg>
       </div>
       <div class="point even">
-        42
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
-        43
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="23" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
         44
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-w-edge">
         45
       </div>
-      <div class="point even">
+      <div class="point even board-lines-center">
         46
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-star-point">
         47
       </div>
-      <div class="point even">
+      <div class="point even board-lines-center">
         48
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-e-edge">
         49
       </div>
       <div class="point even">
@@ -197,36 +307,51 @@
         57
       </div>
       <div class="point even">
-        58
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="23" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
-        59
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
-        60
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
-        61
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
-        62
+        <svg height="45" width="45">
+          <line x1="23" y1="0" x2="23" y2="45" class="board-line" />
+          <line x1="0" y1="23" x2="23" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
         63
       </div>
-      <div class="point even">
+      <div class="point even board-lines-w-edge">
         64
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-center">
         65
       </div>
-      <div class="point even">
+      <div class="point even board-lines-center">
         66
       </div>
-      <div class="point odd">
+      <div class="point odd board-lines-center">
         67
       </div>
-      <div class="point even">
+      <div class="point even board-lines-e-edge">
         68
       </div>
       <div class="point odd">
@@ -254,16 +379,61 @@
         76
       </div>
       <div class="point odd">
-        77
+        <svg height="45" width="45">
+          <line x1="23" y1="23" x2="23" y2="0" class="board-line" />
+          <line x1="23" y1="23" x2="45" y2="23" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
-        78
+        <svg height="45" width="45">
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+          <line x1="23" y1="23" x2="23" y2="0" class="board-line" />
+        </svg>
       </div>
       <div class="point odd">
-        79
+        <svg height="45" width="45">
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+          <line x1="23" y1="23" x2="23" y2="0" class="board-line" />
+        </svg>
       </div>
       <div class="point even">
-        80
+        <svg height="45" width="45">
+          <line x1="0" y1="23" x2="45" y2="23" class="board-line" />
+          <line x1="23" y1="23" x2="23" y2="0" class="board-line" />
+        </svg>
+      </div>
+      <div class="point odd">
+        <svg height="45" width="45">
+          <line x1="23" y1="23" x2="0" y2="23" class="board-line" />
+          <line x1="23" y1="23" x2="23" y2="0" class="board-line" />
+        </svg>
+      </div>
+      <div class="point even">
+        82
+      </div>
+      <div class="point odd board-lines-sw-corner">
+        83
+      </div>
+      <div class="point even board-lines-s-edge">
+        84
+      </div>
+      <div class="point odd board-lines-s-edge">
+        85
+      </div>
+      <div class="point even board-lines-s-edge">
+        86
+      </div>
+      <div class="point odd board-lines-se-corner">
+        87
+      </div>
+      <div class="point even">
+        88
+      </div>
+      <div class="point odd">
+        89
+      </div>
+      <div class="point even">
+        90
       </div>
     </div>
   </body>
