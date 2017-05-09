@@ -46,12 +46,13 @@ list_positions game =
 build_board : Int -> Int -> Game -> Html Msg
 build_board cols rows game =
     div [ board ] (build_board_cells cols rows game)
+    
 --     div [ board ] (build_labels cols rows ++ build_board_cells cols rows game)
+--     div [ board ] (buildSvg cols rows::build_board_cells cols rows game)
 
 -- build_labels : Int -> Int -> Html Msg
 -- build_labels cols rows =
-    
-    
+
 build_board_cells : Int -> Int -> Game -> List(Html Msg)
 build_board_cells cols rows game =
     case rows of
@@ -90,19 +91,19 @@ cell =
           ]
 
 center : Position
-center = (23,23)
+center = (22,22)
 
 top : Position
-top = (23,0)
+top = (22,0)
 
 left : Position
-left = (0,23)
+left = (0,22)
 
 right : Position
-right = (45,23)
+right = (45,22)
 
 bottom : Position
-bottom = (23, 45)
+bottom = (22, 45)
 
 -- lines_nw_corner : Attribute msg
 -- lines_nw_corner =
@@ -113,6 +114,7 @@ type alias Line = (Position,Position)
 drawCell : Int -> Int -> Html msg
 drawCell col row =
     svg [ cell ] ((cellLines (calcLines col row)) ++ (starPoint col row) ++ (stone col row))
+--     text (toString (col,row))
 
 calcLines : Int -> Int -> List Line
 calcLines col row =
@@ -143,7 +145,7 @@ createLineStyle (px1,py1) (px2,py2) =
 starPoint : Int -> Int -> List (Svg msg)
 starPoint col row =
     if (col == 4 || col == 10 || col == 16) && (row == 4 || row == 10 || row == 16) then
-        [ circle [ cx "23", cy "23", r "3", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
+        [ circle [ cx "22", cy "22", r "3", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
     else
         [ ]
 
@@ -158,3 +160,60 @@ stone col row = []
 --     , button [ onClick (Board(2,1)) ] [ text "+" ]
 --     , button [ onClick (Board(2,2)) ] [ text "+" ]
 --    ]
+
+{-
+  Version to build the grid on the parent div
+  but it pushes the intersection divs down, so
+  this'll work best as a background svg using
+  a data uri on a stylesheet. For now, just use
+  the cell by cell version above
+-}
+
+buildSvg : Int -> Int -> Svg Msg
+buildSvg cols rows =
+    svg [ boardSize ] (buildLines cols rows ++ buildStarPoints)
+
+buildLines : Int -> Int -> List(Svg Msg)
+buildLines cols rows =
+    buildVerticalLines cols ++ buildHorizontalLines rows
+
+        
+buildVerticalLines : Int -> List(Svg Msg)
+buildVerticalLines cols =
+    let
+        x = (cols - 1) * 45 + 22
+    in
+        if cols == 0 then
+            []
+        else
+            positionToLine ((x,22),(x,832))::buildVerticalLines (cols - 1)
+
+buildHorizontalLines : Int -> List(Svg Msg)
+buildHorizontalLines rows =
+    let
+        y = (rows - 1) * 45 + 22
+    in
+        if rows == 0 then
+            []
+        else
+            positionToLine ((22,y),(832,y))::buildHorizontalLines (rows - 1)
+
+buildStarPoints : List(Svg Msg)
+buildStarPoints =
+    List.concatMap (\x -> List.map (buildStarPoint x) [4,10,16]) [4,10,16]
+
+buildStarPoint : Int -> Int -> Svg Msg
+buildStarPoint col row =
+    let
+        xpos = (col - 1) * 45 + 22
+        ypos = (row - 1) * 45 + 22
+    in
+        circle [ cx (toString xpos), cy (toString ypos), r "3", stroke "black", strokeWidth "1.5", fill "black" ] []
+                            
+boardSize : Attribute msg
+boardSize =
+    style
+    [ ("width", "855px")
+    , ("height", "855px")
+    ]
+
