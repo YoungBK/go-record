@@ -3,6 +3,9 @@ import Html.Events exposing (onClick)
 import Html.Attributes exposing (style)
 import Svg exposing (Svg, svg, line, circle)
 import Svg.Attributes exposing (x1, x2, cx, y1, y2, cy, r, stroke, strokeWidth, fill)
+import Dict exposing (Dict)
+import Maybe exposing (Maybe)
+
 -- import GoRecordStylesheet
 
 main =
@@ -14,12 +17,13 @@ main =
 
 
 -- MODEL
+
 type Player = Black | White
 type alias Position = (Int,Int)
-type alias Game = List Position
+type alias Game = { moves : List Position, positions : Dict Position Player, nextPlayer : Player }
 
 game : Game
-game = []
+game = { moves = [], positions = Dict.empty, nextPlayer = Black }
 
 
 -- UPDATE
@@ -29,9 +33,16 @@ type Msg = Menu | Move Position
 update : Msg -> Game -> Game
 update msg game =
   case msg of
-    Move pos -> pos::game
+    Move pos -> { game | moves = pos::game.moves
+                       , nextPlayer = next game.nextPlayer
+                       , positions = Dict.insert pos game.nextPlayer game.positions }
     Menu     -> game
 
+next : Player -> Player
+next p =
+    case p of
+        Black -> White
+        White -> Black
 
 -- VIEW
 
@@ -67,7 +78,7 @@ build_row_cells cols row game =
 
 build_cell : Int -> Int -> Game -> Html Msg
 build_cell col row game =
-    div [ (onClick (Move (col, row))), cell ] [ drawCell col row ]
+    div [ (onClick (Move (col, row))), cell ] [ drawCell col row game ]
 
 -- STYLES
 
@@ -111,9 +122,10 @@ bottom = (22, 45)
 
 type alias Line = (Position,Position)
 
-drawCell : Int -> Int -> Html msg
-drawCell col row =
-    svg [ cell ] ((cellLines (calcLines col row)) ++ (starPoint col row) ++ (stone col row))
+drawCell : Int -> Int -> Game -> Html msg
+drawCell col row game =
+    svg [ cell ] ((cellLines (calcLines col row)) ++ (starPoint col row) ++ (stone col row game))
+    
 --     text (toString (col,row))
 
 calcLines : Int -> Int -> List Line
@@ -150,9 +162,12 @@ starPoint col row =
         [ ]
 
         
-stone : Int -> Int -> List (Svg msg)
-stone col row = []
-        
+stone : Int -> Int -> Game -> List (Svg msg)
+stone col row game =
+    case Dict.get (col,row) game.positions of
+        Just Black -> [ circle [ cx "22", cy "22", r "20", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
+        Just White -> [ circle [ cx "22", cy "22", r "20", stroke "white", strokeWidth "1.5", fill "white" ] [] ]
+        Nothing     -> []
 
 -- div []
 --     [ button [ onClick (Board(1,1)) ] [ text "+" ]
