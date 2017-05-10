@@ -1,8 +1,8 @@
 import Html exposing (Html, Attribute, div, text)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Html.Attributes exposing (style)
 import Svg exposing (Svg, svg, line, circle)
-import Svg.Attributes exposing (x1, x2, cx, y1, y2, cy, r, stroke, strokeWidth, fill)
+import Svg.Attributes exposing (x1, x2, cx, y1, y2, cy, r, stroke, strokeWidth, fill, opacity)
 import Dict exposing (Dict)
 import Maybe exposing (Maybe)
 
@@ -20,23 +20,25 @@ main =
 
 type Player = Black | White
 type alias Position = (Int,Int)
-type alias Game = { moves : List Position, positions : Dict Position Player, nextPlayer : Player }
+type alias Game = { moves : List Position, positions : Dict Position Player, nextPlayer : Player, hover : Maybe Position }
 
 game : Game
-game = { moves = [], positions = Dict.empty, nextPlayer = Black }
+game = { moves = [], positions = Dict.empty, nextPlayer = Black, hover = Nothing }
 
 
 -- UPDATE
 
-type Msg = Menu | Move Position
+type Msg = Menu | Move Position | Hover (Maybe Position)
 
 update : Msg -> Game -> Game
 update msg game =
   case msg of
-    Move pos -> { game | moves = pos::game.moves
-                       , nextPlayer = next game.nextPlayer
-                       , positions = Dict.insert pos game.nextPlayer game.positions }
-    Menu     -> game
+    Move pos   -> { game | moves = pos::game.moves
+                  , nextPlayer = next game.nextPlayer
+                  , positions = Dict.insert pos game.nextPlayer game.positions
+                  , hover = Nothing }
+    Hover mpos -> { game | hover = mpos}
+    Menu       -> game
 
 next : Player -> Player
 next p =
@@ -78,11 +80,12 @@ build_row_cells cols row game =
 
 build_cell : Int -> Int -> Game -> Html Msg
 build_cell col row game =
-    div [ (onClick (Move (col, row))), cell ] [ drawCell col row game ]
+    div (cell::actions col row game) [ drawCell col row game ]
+
 
 -- STYLES
 
-board : Attribute msg
+board : Attribute Msg
 board =
   style
   [ ("display", "-webkit-flex")
@@ -94,12 +97,25 @@ board =
   , ("align-content", "flex-start")
   ]
 
-cell : Attribute msg
+cell : Attribute Msg
 cell =
     style [ ("width", "45px")
           , ("height", "45px")
           , ("margin", "0px")
           ]
+
+actions : Int -> Int -> Game -> List (Attribute Msg)
+actions col row game =
+    if Dict.get (col,row) game.positions == Nothing then
+        onClick (Move (col, row)) :: standardActions col row
+    else
+        standardActions col row
+
+standardActions : Int -> Int -> List (Attribute Msg)
+standardActions col row =
+    [ onMouseEnter (Hover (Just (col,row)))
+    , onMouseLeave (Hover Nothing)
+    ]
 
 center : Position
 center = (22,22)
@@ -122,9 +138,9 @@ bottom = (22, 45)
 
 type alias Line = (Position,Position)
 
-drawCell : Int -> Int -> Game -> Html msg
+drawCell : Int -> Int -> Game -> Html Msg
 drawCell col row game =
-    svg [ cell ] ((cellLines (calcLines col row)) ++ (starPoint col row) ++ (stone col row game))
+    svg [ cell ] ((cellLines (calcLines col row)) ++ starPoint col row ++ stone col row game ++ hover col row game)
     
 --     text (toString (col,row))
 
@@ -141,20 +157,20 @@ calcLines col row =
         (_,19)  -> [(center, top), (left,right)]
         _       -> [(top, bottom), (left,right)]
 
-cellLines : List Line -> List (Svg msg)
+cellLines : List Line -> List (Svg Msg)
 cellLines lines =
     List.map positionToLine lines
 
-positionToLine : Line -> Svg msg
+positionToLine : Line -> Svg Msg
 positionToLine (point1,point2) =
     line (createLineStyle point1 point2) [ ]
 
-createLineStyle : Position -> Position -> List (Svg.Attribute msg)
+createLineStyle : Position -> Position -> List (Svg.Attribute Msg)
 createLineStyle (px1,py1) (px2,py2) =
     [ x1 (toString px1), y1 (toString py1), x2 (toString px2), y2 (toString py2), stroke "rgb(0,0,0)", strokeWidth "1.25" ]
 
 
-starPoint : Int -> Int -> List (Svg msg)
+starPoint : Int -> Int -> List (Svg Msg)
 starPoint col row =
     if (col == 4 || col == 10 || col == 16) && (row == 4 || row == 10 || row == 16) then
         [ circle [ cx "22", cy "22", r "3", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
@@ -162,12 +178,28 @@ starPoint col row =
         [ ]
 
         
-stone : Int -> Int -> Game -> List (Svg msg)
+stone : Int -> Int -> Game -> List (Svg Msg)
 stone col row game =
     case Dict.get (col,row) game.positions of
         Just Black -> [ circle [ cx "22", cy "22", r "20", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
         Just White -> [ circle [ cx "22", cy "22", r "20", stroke "white", strokeWidth "1.5", fill "white" ] [] ]
         Nothing     -> []
+
+hover : Int -> Int -> Game -> List (Svg Msg)
+hover col row game =
+    case game.hover of
+        Just pos -> if pos == (col, row) && Dict.get (col,row) game.positions == Nothing then
+                        drawHover game
+                    else
+                        []
+        Nothing  -> []
+
+drawHover : Game -> List (Svg Msg)
+drawHover game =
+    case game.nextPlayer of
+        Black -> [ circle [ cx "22", cy "22", r "20", stroke "black", strokeWidth "1.5", fill "black", opacity "0.5" ] [] ]
+        White -> [ circle [ cx "22", cy "22", r "20", stroke "white", strokeWidth "1.5", fill "white", opacity "0.5" ] [] ]
+
 
 -- div []
 --     [ button [ onClick (Board(1,1)) ] [ text "+" ]
