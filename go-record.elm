@@ -10,7 +10,7 @@ import Maybe exposing (Maybe)
 
 main =
   Html.beginnerProgram
-    { model = game
+    { model = model
     , view = view
     , update = update
     }
@@ -20,22 +20,23 @@ main =
 
 type Player = Black | White
 type alias Position = (Int,Int)
+type alias GamePosition = Dict Position Player
 type alias Game = { moves : List Position
-                  , positions : Dict Position Player
+                  , positions : GamePosition
                   , nextPlayer : Player
                   , hover : Maybe Position
-                  , liberties : Int
+                  , liberties : List Position
                   , neighborGroup : List Position
                   }
 
-game : Game
-game = { moves = []
-       , positions = Dict.empty
-       , nextPlayer = Black
-       , hover = Nothing
-       , liberties = 0
-       , neighborGroup = []
-       }
+model : Game
+model = { moves = []
+        , positions = Dict.empty
+        , nextPlayer = Black
+        , hover = Nothing
+        , liberties = []
+        , neighborGroup = []
+        }
 
 
 -- UPDATE
@@ -50,12 +51,13 @@ update msg game =
     Move pos   ->
       let
         group = findContiguous pos game.nextPlayer game
+        newPositions = Dict.insert pos game.nextPlayer game.positions
       in
         { game | moves = pos::game.moves
         , nextPlayer = next game.nextPlayer
-        , positions = Dict.insert pos game.nextPlayer game.positions
+        , positions = newPositions
         , hover = Nothing
-        , liberties = libertyCount group game
+        , liberties = findLiberties group game.nextPlayer newPositions
         , neighborGroup = group
         }
 
@@ -79,9 +81,9 @@ canMove player pos =
     else
 -}      
     
-positionEmpty : Position -> Game -> Bool
-positionEmpty pos game =
-    Dict.get pos game.positions == Nothing
+positionEmpty : Position -> GamePosition -> Bool
+positionEmpty pos position =
+    Dict.get pos position == Nothing
     
 isSuicide : Position -> Game -> Bool
 isSuicide move game = False
@@ -109,25 +111,27 @@ isKo move game =
             -- List.contains kolist captured (or maybe pos)
 -}
 
-libertyCount : List Position -> Game -> Int
-libertyCount group game = 0
+findLiberties : List Position -> Player -> GamePosition -> List Position
+findLiberties group player positions =
+  findLibertiesIter group player positions []
 
-findLiberties : List Position -> Player -> Game -> List Position
-findLiberties group player game =
-  findLibertiesIter group player game []
-
-findLibertiesIter : List Position -> Player -> Game -> List Position -> List Position
-findLibertiesIter group player game liberties =
+findLibertiesIter : List Position -> Player -> GamePosition -> List Position -> List Position
+findLibertiesIter group player positions liberties =
   case group of
-    [] -> liberties
-    pos::tail -> findLibertiesIter tail player game (merge (libertiesOf pos player game liberties) liberties)
+    []        -> liberties
+    pos::tail ->
+      let
+        calcedLiberties = merge (libertiesOf pos player positions) liberties
+      in
+        findLibertiesIter tail player positions calcedLiberties
 
-libertiesOf : Position -> Player -> Game -> List Position -> List Position
-libertiesOf pos player game liberties =
-  if Dict.get pos game.positions /= Just player then
-    [] -- some kind of error
+libertiesOf : Position -> Player -> Dict Position Player -> List Position
+libertiesOf pos player positions =
+  if Dict.get pos positions == Just player then
+    List.filter (\p -> Dict.get p positions == Nothing) (calcNeighbors pos)
   else
-    []
+    [] -- some kind of error
+    
     -- List.filter ((==) Nothing) (List.map (\p -> Dict.get p game.positions) (calcNeighbors pos))
 
 merge : List Position -> List Position -> List Position
@@ -144,7 +148,7 @@ mergeIfNotExists pos list =
     pos::list
   
 stonesCapturedByMove : Position -> Game -> List Position
-stonesCapturedByMove move game = [ ]
+stonesCapturedByMove move game = []
 
 findContiguous : Position -> Player -> Game -> List Position
 findContiguous pos player game =
@@ -156,7 +160,7 @@ findNeighbors toSearch player game found =
     []        -> found
     pos::tail ->
       let
-        neighbors = List.filter (inGame player game) (calcNeighbors pos)
+        neighbors = List.filter (inGame player game.positions) (calcNeighbors pos)
         newNeighbors = List.filter (\n -> not (List.member n found)) neighbors
         newFound = if List.member pos found then
                      newNeighbors ++ found
@@ -173,15 +177,15 @@ withinBounds : Position -> Bool
 withinBounds (x,y) =
   x >=1 && x <= 19 && y >= 1 && y <= 19
 
-inGame : Player -> Game -> Position -> Bool
-inGame player game pos =
-    Dict.get pos game.positions == Just player
+inGame : Player -> GamePosition -> Position -> Bool
+inGame player positions pos =
+    Dict.get pos positions == Just player
     
 -- VIEW
 
 view : Game -> Html Msg
 view game =
-    div [ ] (list_positions game::[build_board 19 19 game])
+    div [] (list_positions game::[build_board 19 19 game])
 
 list_positions : Game -> Html Msg
 list_positions game =
@@ -211,12 +215,12 @@ build_row_cells cols row game =
 
 build_cell : Position -> Game -> Html Msg
 build_cell pos game =
-    div (cell::actions pos game) [ drawCell pos game ]
+    div (cell::actions pos game.positions) [ drawCell pos game ]
 
 
-actions : Position -> Game -> List (Attribute Msg)
-actions pos game =
-    if positionEmpty pos game then
+actions : Position -> GamePosition -> List (Attribute Msg)
+actions pos positions =
+    if positionEmpty pos positions then
         onClick (Move pos) :: [ onMouseEnter (Hover (Just pos)) ]
     else
         [ onMouseEnter (Hover Nothing) ]
@@ -262,7 +266,7 @@ cellLines lines =
 
 positionToLine : Line -> Svg Msg
 positionToLine (point1,point2) =
-    line (createLineStyle point1 point2) [ ]
+    line (createLineStyle point1 point2) []
 
 createLineStyle : Position -> Position -> List (Svg.Attribute Msg)
 createLineStyle (px1,py1) (px2,py2) =
@@ -273,7 +277,7 @@ starPoint (col,row) =
     if (col == 4 || col == 10 || col == 16) && (row == 4 || row == 10 || row == 16) then
         [ circle [ cx "22", cy "22", r "3", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
     else
-        [ ]
+        []
         
 stone : Position -> Game -> List (Svg Msg)
 stone pos game =
