@@ -10,7 +10,7 @@ import Maybe exposing (Maybe)
 
 main =
   Html.beginnerProgram
-    { model = model
+    { model = gameModel
     , view = view
     , update = update
     }
@@ -27,16 +27,20 @@ type alias Game = { moves : List Position
                   , hover : Maybe Position
                   , liberties : List Position
                   , neighborGroup : List Position
+                  , opponentGroups : List (List Position)
+                  , mostRecentCaptures : List (List Position)
                   }
 
-model : Game
-model = { moves = []
-        , positions = Dict.empty
-        , nextPlayer = Black
-        , hover = Nothing
-        , liberties = []
-        , neighborGroup = []
-        }
+gameModel : Game
+gameModel = { moves = []
+            , positions = Dict.empty
+            , nextPlayer = Black
+            , hover = Nothing
+            , liberties = []
+            , neighborGroup = []
+            , opponentGroups = []
+            , mostRecentCaptures = []
+            }
 
 
 -- UPDATE
@@ -50,15 +54,19 @@ update msg game =
     Menu       -> game
     Move pos   ->
       let
-        group = findContiguous pos game.nextPlayer game
+        group = findContiguous pos game.nextPlayer game.positions
+        adjacentOpponentGroups = adjacentOpponentGroupsOf pos game.nextPlayer game.positions
         newPositions = Dict.insert pos game.nextPlayer game.positions
+        -- captures = capturesOf pos adjacentOpponentGroups newPositions
       in
         { game | moves = pos::game.moves
         , nextPlayer = next game.nextPlayer
-        , positions = newPositions
+        , positions = newPositions -- removeCaptures captures newPositions
         , hover = Nothing
         , liberties = findLiberties group game.nextPlayer newPositions
         , neighborGroup = group
+        , opponentGroups = adjacentOpponentGroups
+        , mostRecentCaptures = [] -- captures
         }
 
 next : Player -> Player
@@ -111,6 +119,27 @@ isKo move game =
             -- List.contains kolist captured (or maybe pos)
 -}
 
+adjacentOpponentGroupsOf : Position -> Player -> GamePosition -> List (List Position)
+adjacentOpponentGroupsOf pos player gamePosition =
+  let
+    opponent = next player
+    adjacentOpponents = List.filter (inGame opponent gamePosition) (calcNeighbors pos)
+  in
+    adjacentOpponentGroupsOfIter adjacentOpponents opponent gamePosition []
+
+adjacentOpponentGroupsOfIter : List Position -> Player -> GamePosition -> List (List Position) -> List (List Position)
+adjacentOpponentGroupsOfIter adjacentOpponents opponent gamePosition result =
+  case adjacentOpponents of
+    []        -> result
+    pos::tail ->
+      let
+        newResult = if List.any ((==) True) (List.map (List.member pos) result) then
+                      result
+                    else
+                      (findContiguous pos opponent gamePosition)::result
+      in
+        adjacentOpponentGroupsOfIter tail opponent gamePosition newResult
+
 findLiberties : List Position -> Player -> GamePosition -> List Position
 findLiberties group player positions =
   findLibertiesIter group player positions []
@@ -150,24 +179,24 @@ mergeIfNotExists pos list =
 stonesCapturedByMove : Position -> Game -> List Position
 stonesCapturedByMove move game = []
 
-findContiguous : Position -> Player -> Game -> List Position
-findContiguous pos player game =
-    findNeighbors [pos] player game []
+findContiguous : Position -> Player -> GamePosition -> List Position
+findContiguous pos player gamePosition =
+    findNeighbors [pos] player gamePosition []
 
-findNeighbors : List Position -> Player -> Game -> List Position -> List Position
-findNeighbors toSearch player game found =
+findNeighbors : List Position -> Player -> GamePosition -> List Position -> List Position
+findNeighbors toSearch player gamePosition found =
   case toSearch of
     []        -> found
     pos::tail ->
       let
-        neighbors = List.filter (inGame player game.positions) (calcNeighbors pos)
+        neighbors = List.filter (inGame player gamePosition) (calcNeighbors pos)
         newNeighbors = List.filter (\n -> not (List.member n found)) neighbors
         newFound = if List.member pos found then
                      newNeighbors ++ found
                    else
                      pos::(newNeighbors ++ found)
       in
-        findNeighbors (tail ++ newNeighbors) player game newFound
+        findNeighbors (tail ++ newNeighbors) player gamePosition newFound
 
 calcNeighbors : Position -> List Position
 calcNeighbors (x,y) =
@@ -281,26 +310,35 @@ starPoint (col,row) =
         
 stone : Position -> Game -> List (Svg Msg)
 stone pos game =
-    case Dict.get pos game.positions of
-        Just Black -> [ circle [ cx "22", cy "22", r "20", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
-        Just White -> [ circle [ cx "22", cy "22", r "20", stroke "white", strokeWidth "1.5", fill "white" ] [] ]
-        Nothing     -> []
+  case Dict.get pos game.positions of
+    Just player -> drawStone player defaultOpacity
+    Nothing     -> []
 
 hover : Position -> Game -> List (Svg Msg)
 hover pos game =
-    case game.hover of
-        Just hoverpos -> if hoverpos == pos then
-                             drawHover game
-                         else
-                             []
-        Nothing       -> []
+  case game.hover of
+    Just hoverpos -> if hoverpos == pos then
+                       drawHover game
+                     else
+                       []
+    Nothing       -> []
 
 drawHover : Game -> List (Svg Msg)
 drawHover game =
-    case game.nextPlayer of
-        Black -> [ circle [ cx "22", cy "22", r "20", stroke "black", strokeWidth "1.5", fill "black", opacity "0.5" ] [] ]
-        White -> [ circle [ cx "22", cy "22", r "20", stroke "white", strokeWidth "1.5", fill "white", opacity "0.5" ] [] ]
+  drawStone game.nextPlayer hoverOpacity
 
+drawStone : Player -> String -> List(Svg Msg)
+drawStone player opacityValue =
+  [ circle [ cx "22", cy "22", r "20", stroke (color player), strokeWidth "1.5", fill (color player), opacity opacityValue ] [] ]
+
+color : Player -> String
+color player =
+  case player of
+    Black -> "black"
+    White -> "white"
+        
+hoverOpacity = "0.5"
+defaultOpacity = "1.0"
 
 -- STYLES
 
