@@ -29,6 +29,7 @@ type alias Game = { moves : List Position
                   , neighborGroup : List Position
                   , opponentGroups : List (List Position)
                   , mostRecentCaptures : List (List Position)
+                  , error : Maybe String
                   }
 
 gameModel : Game
@@ -40,6 +41,7 @@ gameModel = { moves = []
             , neighborGroup = []
             , opponentGroups = []
             , mostRecentCaptures = []
+            , error = Nothing
             }
 
 
@@ -52,28 +54,41 @@ update msg game =
   case msg of
     Hover mpos -> { game | hover = mpos}
     Menu       -> game
-    Move pos   ->
-      let
-        group = findContiguous pos game.nextPlayer game.positions
-        adjacentOpponentGroups = adjacentOpponentGroupsOf pos game.nextPlayer game.positions
-        newPositions = Dict.insert pos game.nextPlayer game.positions
-        -- captures = capturesOf pos adjacentOpponentGroups newPositions
-      in
-        { game | moves = pos::game.moves
-        , nextPlayer = next game.nextPlayer
-        , positions = newPositions -- removeCaptures captures newPositions
-        , hover = Nothing
-        , liberties = findLiberties group game.nextPlayer newPositions
-        , neighborGroup = group
-        , opponentGroups = adjacentOpponentGroups
-        , mostRecentCaptures = [] -- captures
-        }
+    Move pos   -> makeMove pos game
+
+makeMove : Position -> Game -> Game
+makeMove pos game =
+  let
+    currentPlayer = game.nextPlayer
+    nextPlayer = next currentPlayer
+    group = findContiguous pos currentPlayer game.positions
+    adjacentOpponentGroups = adjacentOpponentGroupsOf pos currentPlayer game.positions
+    positionsMoveAdded = Dict.insert pos game.nextPlayer game.positions
+    captures = capturedByMove pos nextPlayer adjacentOpponentGroups positionsMoveAdded
+    newPositions = removeCaptures captures positionsMoveAdded
+    moveLiberties = findLiberties group currentPlayer newPositions
+  in
+    if not <| positionEmpty pos game.positions then
+      { game | error = Just "Illegal move: Position occupied" }
+    else if List.isEmpty moveLiberties then
+      { game | error = Just "Illegal move: Cannot commit suicide" }
+    else
+      { game | moves = pos::game.moves
+      , nextPlayer = nextPlayer
+      , positions = newPositions
+      , hover = Nothing
+      , liberties = moveLiberties
+      , neighborGroup = group
+      , opponentGroups = adjacentOpponentGroups
+      , mostRecentCaptures = captures
+      , error = Nothing
+      }
 
 next : Player -> Player
 next p =
-    case p of
-        Black -> White
-        White -> Black
+  case p of
+    Black -> White
+    White -> Black
 
 -- GAME MECHANICS
 
@@ -90,8 +105,8 @@ canMove player pos =
 -}      
     
 positionEmpty : Position -> GamePosition -> Bool
-positionEmpty pos position =
-    Dict.get pos position == Nothing
+positionEmpty pos positions =
+  Dict.get pos positions == Nothing
     
 isSuicide : Position -> Game -> Bool
 isSuicide move game = False
@@ -176,8 +191,19 @@ mergeIfNotExists pos list =
   else
     pos::list
   
-stonesCapturedByMove : Position -> Game -> List Position
-stonesCapturedByMove move game = []
+capturedByMove : Position -> Player -> List (List Position) -> Dict Position Player -> List (List Position)
+capturedByMove move player groups positions =
+  List.filter (\g -> List.isEmpty <| findLiberties g player positions) groups
+
+removeCaptures : List (List Position) -> Dict Position Player -> Dict Position Player
+removeCaptures captures positions =
+  removeCapturesIter (List.concat captures) positions
+  
+removeCapturesIter : List Position -> Dict Position Player -> Dict Position Player
+removeCapturesIter captures positions =
+  case captures of
+    []        -> positions
+    pos::rest -> removeCapturesIter rest (Dict.remove pos positions)
 
 findContiguous : Position -> Player -> GamePosition -> List Position
 findContiguous pos player gamePosition =
