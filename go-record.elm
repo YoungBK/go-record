@@ -5,6 +5,8 @@ import Svg exposing (Svg, svg, line, circle)
 import Svg.Attributes exposing (x1, x2, cx, y1, y2, cy, r, stroke, strokeWidth, fill, opacity)
 import Dict exposing (Dict)
 import Maybe exposing (Maybe)
+import Set exposing (Set)
+-- import String exposing (cons)
 
 -- import GoRecordStylesheet
 
@@ -19,10 +21,13 @@ main =
 -- MODEL
 
 type Player = Black | White
+type alias BoardPosition = List (Int, Char)
 type alias Position = (Int,Int)
 type alias GamePosition = Dict Position Player
+type alias PositionHistory = Set BoardPosition
 type alias Game = { moves : List Position
                   , positions : GamePosition
+                  , positionCheck : PositionHistory
                   , nextPlayer : Player
                   , hover : Maybe Position
                   , liberties : List Position
@@ -35,6 +40,7 @@ type alias Game = { moves : List Position
 gameModel : Game
 gameModel = { moves = []
             , positions = Dict.empty
+            , positionCheck = Set.empty
             , nextPlayer = Black
             , hover = Nothing
             , liberties = []
@@ -67,6 +73,7 @@ makeMove pos game =
     captures = capturedByMove pos nextPlayer adjacentOpponentGroups positionsMoveAdded
     newPositions = removeCaptures captures positionsMoveAdded
     moveLiberties = findLiberties group currentPlayer newPositions
+    newPositionCheck = Set.insert (buildBoardPosition newPositions nextPlayer) game.positionCheck
   in
     if not <| positionEmpty pos game.positions then
       { game | error = Just "Illegal move: Position occupied" }
@@ -74,8 +81,9 @@ makeMove pos game =
       { game | error = Just "Illegal move: Cannot commit suicide" }
     else
       { game | moves = pos::game.moves
-      , nextPlayer = nextPlayer
       , positions = newPositions
+      , positionCheck = newPositionCheck
+      , nextPlayer = nextPlayer
       , hover = Nothing
       , liberties = moveLiberties
       , neighborGroup = group
@@ -110,7 +118,7 @@ positionEmpty pos positions =
     
 isSuicide : Position -> Game -> Bool
 isSuicide move game = False
-                 
+
 isKo : Position -> Game -> Bool
 isKo move game = False
 
@@ -235,17 +243,87 @@ withinBounds (x,y) =
 inGame : Player -> GamePosition -> Position -> Bool
 inGame player positions pos =
     Dict.get pos positions == Just player
-    
+
+buildBoardPosition : GamePosition -> Player -> BoardPosition
+buildBoardPosition gamePosition nextPlayer =
+  (0, positionCode (Just nextPlayer))::buildPositionHistoryRowIter gamePosition (19, 19) []
+
+buildPositionHistoryRowIter : GamePosition -> Position -> BoardPosition -> BoardPosition
+buildPositionHistoryRowIter gamePosition (cols,rows) boardPosition =
+  case rows of
+    0 -> boardPosition
+    _ -> buildPositionHistoryRowIter gamePosition (cols,rows-1)
+           (buildPositionHistoryCellIter gamePosition (cols,rows) boardPosition)
+
+buildPositionHistoryCellIter : GamePosition -> Position -> BoardPosition -> BoardPosition
+buildPositionHistoryCellIter gamePosition (cols,rows) boardPosition =
+  case cols of
+    0 -> boardPosition
+    _ -> buildPositionHistoryCellIter gamePosition (cols-1,rows)
+           (sparseMerge (positionCode <| Dict.get (cols,rows) gamePosition) boardPosition)
+
+positionCode : Maybe Player -> Char
+positionCode player =
+  case player of
+    Nothing    -> '.'
+    Just Black -> 'B'
+    Just White -> 'W'
+
+sparseMerge : Char -> BoardPosition -> BoardPosition
+sparseMerge code boardPosition =
+  case boardPosition of
+    []                  -> [(1,code)]
+    (count,bpcode)::bps -> if bpcode == code then
+                             (count + 1, code)::bps
+                           else
+                             (1,code)::boardPosition
+
 -- VIEW
 
 view : Game -> Html Msg
 view game =
-    div [] (list_positions game::[build_board 19 19 game])
+    div [] (list_positions game::build_board 19 19 game::navbar game::[])
 
 list_positions : Game -> Html Msg
 list_positions game =
     div [] [ text (toString game) ]
 
+navbar : Game -> Html Msg
+navbar game =
+  div [] (nav_begin game::nav_rew game::nav_back game::nav_up game::nav_down game::nav_step game::nav_ff game::nav_end game::[])
+
+nav_begin : Game -> Html Msg
+nav_begin game =
+  text "begin"
+
+nav_rew : Game -> Html Msg
+nav_rew game =
+  text "rew"
+  
+nav_back : Game -> Html Msg
+nav_back game =
+  text "back"
+
+nav_up : Game -> Html Msg
+nav_up game =
+  text "up"
+
+nav_down : Game -> Html Msg
+nav_down game =
+  text "down"
+
+nav_step : Game -> Html Msg
+nav_step game =
+  text "step"
+
+nav_ff : Game -> Html Msg
+nav_ff game =
+  text "ff"
+
+nav_end : Game -> Html Msg
+nav_end game =
+  text "end"
+    
 build_board : Int -> Int -> Game -> Html Msg
 build_board cols rows game =
     div [ board, onMouseLeave (Hover Nothing) ] (build_board_cells cols rows game)
@@ -258,27 +336,27 @@ build_board cols rows game =
 
 build_board_cells : Int -> Int -> Game -> List(Html Msg)
 build_board_cells cols rows game =
-    case rows of
-        0 -> []
-        _ -> (build_row_cells cols rows game) ++ build_board_cells cols (rows - 1) game
+  case rows of
+    0 -> []
+    _ -> (build_row_cells cols rows game) ++ build_board_cells cols (rows - 1) game
 
 build_row_cells : Int -> Int -> Game -> List(Html Msg)
 build_row_cells cols row game =
-    case cols of
-        0 -> []
-        _ -> build_cell ((20 - cols), (20 - row)) game::build_row_cells (cols - 1) row game
+  case cols of
+    0 -> []
+    _ -> build_cell ((20 - cols), (20 - row)) game::build_row_cells (cols - 1) row game
 
 build_cell : Position -> Game -> Html Msg
 build_cell pos game =
-    div (cell::actions pos game.positions) [ drawCell pos game ]
+  div (cell::actions pos game.positions) [ drawCell pos game ]
 
 
 actions : Position -> GamePosition -> List (Attribute Msg)
 actions pos positions =
-    if positionEmpty pos positions then
-        onClick (Move pos) :: [ onMouseEnter (Hover (Just pos)) ]
-    else
-        [ onMouseEnter (Hover Nothing) ]
+  if positionEmpty pos positions then
+    onClick (Move pos) :: [ onMouseEnter (Hover (Just pos)) ]
+  else
+    [ onMouseEnter (Hover Nothing) ]
 
 center : Position
 center = (22,22)
@@ -299,40 +377,40 @@ type alias Line = (Position,Position)
 
 drawCell : Position -> Game -> Html Msg
 drawCell pos game =
-    svg [ cell ] ((cellLines (calcLines pos)) ++ starPoint pos ++ stone pos game ++ hover pos game)
+  svg [ cell ] ((cellLines (calcLines pos)) ++ starPoint pos ++ stone pos game ++ hover pos game)
 --     text (toString (col,row))
 
 calcLines : Position -> List Line
 calcLines pos =
-    case pos of
-        (1,1)   -> [(center, bottom), (center,right)]
-        (1,19)  -> [(center, top), (center,right)]
-        (19,1)  -> [(center, bottom), (center,left)]
-        (19,19) -> [(center, top), (center,left)]
-        (1,_)   -> [(center, right), (top,bottom)]
-        (19,_)  -> [(center, left), (top,bottom)]
-        (_,1)   -> [(center, bottom), (left,right)]
-        (_,19)  -> [(center, top), (left,right)]
-        _       -> [(top, bottom), (left,right)]
+  case pos of
+    (1,1)   -> [(center, bottom), (center,right)]
+    (1,19)  -> [(center, top), (center,right)]
+    (19,1)  -> [(center, bottom), (center,left)]
+    (19,19) -> [(center, top), (center,left)]
+    (1,_)   -> [(center, right), (top,bottom)]
+    (19,_)  -> [(center, left), (top,bottom)]
+    (_,1)   -> [(center, bottom), (left,right)]
+    (_,19)  -> [(center, top), (left,right)]
+    _       -> [(top, bottom), (left,right)]
 
 cellLines : List Line -> List (Svg Msg)
 cellLines lines =
-    List.map positionToLine lines
+  List.map positionToLine lines
 
 positionToLine : Line -> Svg Msg
 positionToLine (point1,point2) =
-    line (createLineStyle point1 point2) []
+  line (createLineStyle point1 point2) []
 
 createLineStyle : Position -> Position -> List (Svg.Attribute Msg)
 createLineStyle (px1,py1) (px2,py2) =
-    [ x1 (toString px1), y1 (toString py1), x2 (toString px2), y2 (toString py2), stroke "rgb(0,0,0)", strokeWidth "1.25" ]
+  [ x1 (toString px1), y1 (toString py1), x2 (toString px2), y2 (toString py2), stroke "rgb(0,0,0)", strokeWidth "1.25" ]
 
 starPoint : Position -> List (Svg Msg)
 starPoint (col,row) =
-    if (col == 4 || col == 10 || col == 16) && (row == 4 || row == 10 || row == 16) then
-        [ circle [ cx "22", cy "22", r "3", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
-    else
-        []
+  if (col == 4 || col == 10 || col == 16) && (row == 4 || row == 10 || row == 16) then
+    [ circle [ cx "22", cy "22", r "3", stroke "black", strokeWidth "1.5", fill "black" ] [] ]
+  else
+    []
         
 stone : Position -> Game -> List (Svg Msg)
 stone pos game =
