@@ -73,16 +73,19 @@ makeMove pos game =
     captures = capturedByMove pos nextPlayer adjacentOpponentGroups positionsMoveAdded
     newPositions = removeCaptures captures positionsMoveAdded
     moveLiberties = findLiberties group currentPlayer newPositions
-    newPositionCheck = Set.insert (buildBoardPosition newPositions nextPlayer) game.positionCheck
+    newBoardPosition = buildBoardPosition newPositions nextPlayer
+    newBoardPositionCheck = Set.insert newBoardPosition game.positionCheck
   in
     if not <| positionEmpty pos game.positions then
       { game | error = Just "Illegal move: Position occupied" }
     else if List.isEmpty moveLiberties then
       { game | error = Just "Illegal move: Cannot commit suicide" }
+    else if Set.member newBoardPosition game.positionCheck then
+      { game | error = Just "Illegal move: Duplicate position (ko rule)" }
     else
       { game | moves = pos::game.moves
       , positions = newPositions
-      , positionCheck = newPositionCheck
+      , positionCheck = newBoardPositionCheck
       , nextPlayer = nextPlayer
       , hover = Nothing
       , liberties = moveLiberties
