@@ -114,7 +114,7 @@ canMove player pos =
     
 positionEmpty : Position -> GamePosition -> Bool
 positionEmpty pos positions =
-  Dict.get pos positions == Nothing
+  playerAt pos positions == Nothing
     
 isSuicide : Position -> Game -> Bool
 isSuicide move game = False
@@ -179,8 +179,8 @@ findLibertiesIter group player positions liberties =
 
 libertiesOf : Position -> Player -> Dict Position Player -> List Position
 libertiesOf pos player positions =
-  if Dict.get pos positions == Just player then
-    List.filter (\p -> Dict.get p positions == Nothing) (calcNeighbors pos)
+  if playerAt pos positions == Just player then
+    List.filter (flip positionEmpty positions) (calcNeighbors pos)
   else
     [] -- some kind of error
     
@@ -240,27 +240,32 @@ withinBounds : Position -> Bool
 withinBounds (x,y) =
   x >=1 && x <= 19 && y >= 1 && y <= 19
 
+playerAt : Position -> GamePosition -> Maybe Player
+playerAt = Dict.get
+
 inGame : Player -> GamePosition -> Position -> Bool
 inGame player positions pos =
-    Dict.get pos positions == Just player
+    playerAt pos positions == Just player
 
+map : (Position -> a) -> (a -> b -> b) -> b -> Int -> Int -> b
+map mapf collectf empty cols rows =
+  mapRowIter mapf collectf cols rows empty
+
+mapRowIter : (Position -> a) -> (a -> b -> b) -> Int -> Int -> b -> b
+mapRowIter mapf collectf cols rows acc =
+  case rows of
+    0 -> acc
+    _ -> mapRowIter mapf collectf cols (rows-1) (mapCellIter mapf collectf cols rows acc)
+
+mapCellIter : (Position -> a) -> (a -> b -> b) -> Int -> Int -> b -> b
+mapCellIter mapf collectf cols rows acc =
+  case cols of
+    0 -> acc
+    _ -> mapCellIter mapf collectf (cols-1) rows (collectf (mapf (cols,rows)) acc)
+    
 buildBoardPosition : GamePosition -> Player -> BoardPosition
 buildBoardPosition gamePosition nextPlayer =
-  (0, positionCode (Just nextPlayer))::buildPositionHistoryRowIter gamePosition (19, 19) []
-
-buildPositionHistoryRowIter : GamePosition -> Position -> BoardPosition -> BoardPosition
-buildPositionHistoryRowIter gamePosition (cols,rows) boardPosition =
-  case rows of
-    0 -> boardPosition
-    _ -> buildPositionHistoryRowIter gamePosition (cols,rows-1)
-           (buildPositionHistoryCellIter gamePosition (cols,rows) boardPosition)
-
-buildPositionHistoryCellIter : GamePosition -> Position -> BoardPosition -> BoardPosition
-buildPositionHistoryCellIter gamePosition (cols,rows) boardPosition =
-  case cols of
-    0 -> boardPosition
-    _ -> buildPositionHistoryCellIter gamePosition (cols-1,rows)
-           (sparseMerge (positionCode <| Dict.get (cols,rows) gamePosition) boardPosition)
+  (0, positionCode (Just nextPlayer))::map (positionCode << flip playerAt gamePosition) sparseMerge [] 19 19
 
 positionCode : Maybe Player -> Char
 positionCode player =
@@ -282,7 +287,7 @@ sparseMerge code boardPosition =
 
 view : Game -> Html Msg
 view game =
-    div [] (list_positions game::build_board 19 19 game::navbar game::[])
+    div [] (list_positions game::buildBoard game::navbar game::[])
 
 list_positions : Game -> Html Msg
 list_positions game =
@@ -324,9 +329,9 @@ nav_end : Game -> Html Msg
 nav_end game =
   text "end"
     
-build_board : Int -> Int -> Game -> Html Msg
-build_board cols rows game =
-    div [ board, onMouseLeave (Hover Nothing) ] (build_board_cells cols rows game)
+buildBoard : Game -> Html Msg
+buildBoard game =
+  div [ board, onMouseLeave (Hover Nothing) ] (map (flip buildCell game) (::) [] 19 19)
     
 --     div [ board ] (build_labels cols rows ++ build_board_cells cols rows game)
 --     div [ board ] (buildSvg cols rows::build_board_cells cols rows game)
@@ -334,20 +339,8 @@ build_board cols rows game =
 -- build_labels : Int -> Int -> Html Msg
 -- build_labels cols rows =
 
-build_board_cells : Int -> Int -> Game -> List(Html Msg)
-build_board_cells cols rows game =
-  case rows of
-    0 -> []
-    _ -> (build_row_cells cols rows game) ++ build_board_cells cols (rows - 1) game
-
-build_row_cells : Int -> Int -> Game -> List(Html Msg)
-build_row_cells cols row game =
-  case cols of
-    0 -> []
-    _ -> build_cell ((20 - cols), (20 - row)) game::build_row_cells (cols - 1) row game
-
-build_cell : Position -> Game -> Html Msg
-build_cell pos game =
+buildCell : Position -> Game -> Html Msg
+buildCell pos game =
   div (cell::actions pos game.positions) [ drawCell pos game ]
 
 
@@ -414,7 +407,7 @@ starPoint (col,row) =
         
 stone : Position -> Game -> List (Svg Msg)
 stone pos game =
-  case Dict.get pos game.positions of
+  case playerAt pos game.positions of
     Just player -> drawStone player defaultOpacity
     Nothing     -> []
 
