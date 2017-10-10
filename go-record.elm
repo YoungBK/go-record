@@ -35,32 +35,50 @@ type alias Game = { moves : List Position
                   , opponentGroups : List (List Position)
                   , mostRecentCaptures : List (List Position)
                   , error : Maybe String
+                  , menu : MenuOption
                   }
 
 gameModel : Game
-gameModel = { moves = []
-            , positions = Dict.empty
-            , positionCheck = Set.empty
-            , nextPlayer = Black
-            , hover = Nothing
-            , liberties = []
-            , neighborGroup = []
-            , opponentGroups = []
-            , mostRecentCaptures = []
-            , error = Nothing
+gameModel = { moves = []                 -- ordered moves made
+            , positions = Dict.empty     -- current positions on board
+            , positionCheck = Set.empty  -- super-ko rule check
+            , nextPlayer = Black         -- player to move
+            , hover = Nothing            -- current mouse hover position
+            , liberties = []             -- liberties of last move
+            , neighborGroup = []         -- stones in the group of last move
+            , opponentGroups = []        -- opponent groups adjacent to last move
+            , mostRecentCaptures = []    -- groups captured by last move
+            , error = Nothing            -- error in move attempt
+            , menu = None
             }
 
 
 -- UPDATE
 
-type Msg = Menu | Move Position | Hover (Maybe Position)
+type MenuOption = Save | Begin | Rewind | Back | Up | Down | Step | FastForward | End | None
+  
+type Msg = Menu MenuOption | Move Position | Hover (Maybe Position)
 
 update : Msg -> Game -> Game
 update msg game =
   case msg of
     Hover mpos -> { game | hover = mpos}
-    Menu       -> game
+    Menu option -> menuSelection option game
     Move pos   -> makeMove pos game
+
+menuSelection : MenuOption -> Game -> Game
+menuSelection option game =
+  case option of
+    Save -> { game | menu = Save }
+    Begin -> game
+    Rewind -> game
+    Back -> game
+    Up -> game
+    Down -> game
+    Step -> game
+    FastForward -> game
+    End -> game
+    None -> { game | menu = None }
 
 makeMove : Position -> Game -> Game
 makeMove pos game =
@@ -290,7 +308,7 @@ sparseMerge code boardPosition =
 
 view : Game -> Html Msg
 view game =
-    div [] (list_positions game::buildBoard game::navbar game::[])
+    div [] [list_positions game, buildBoard game, navbar game]
 
 list_positions : Game -> Html Msg
 list_positions game =
@@ -298,39 +316,43 @@ list_positions game =
 
 navbar : Game -> Html Msg
 navbar game =
-  div [] (nav_begin game::nav_rew game::nav_back game::nav_up game::nav_down game::nav_step game::nav_ff game::nav_end game::[])
+  div [] [nav_save game, nav_begin game, nav_rew game, nav_back game, nav_up game, nav_down game, nav_step game, nav_ff game, nav_end game]
+
+nav_save : Game -> Html Msg
+nav_save game =
+  div [ onClick (Menu Save) ] [ text "save" ]
 
 nav_begin : Game -> Html Msg
 nav_begin game =
-  text "begin"
+  div [ ] [ text "begin" ]
 
 nav_rew : Game -> Html Msg
 nav_rew game =
-  text "rew"
+  div [ ] [ text "rew" ]
   
 nav_back : Game -> Html Msg
 nav_back game =
-  text "back"
+  div [ ] [ text "back" ]
 
 nav_up : Game -> Html Msg
 nav_up game =
-  text "up"
+  div [ ] [ text "up" ]
 
 nav_down : Game -> Html Msg
 nav_down game =
-  text "down"
+  div [ ] [ text "down" ]
 
 nav_step : Game -> Html Msg
 nav_step game =
-  text "step"
+  div [ ] [ text "step" ]
 
 nav_ff : Game -> Html Msg
 nav_ff game =
-  text "ff"
+  div [ ] [ text "ff" ]
 
 nav_end : Game -> Html Msg
 nav_end game =
-  text "end"
+  div [ ] [ text "end" ]
     
 buildBoard : Game -> Html Msg
 buildBoard game =
@@ -350,7 +372,7 @@ buildCell pos game =
 actions : Position -> GamePosition -> List (Attribute Msg)
 actions pos positions =
   if positionEmpty pos positions then
-    onClick (Move pos) :: [ onMouseEnter (Hover (Just pos)) ]
+    [ onClick (Move pos), onMouseEnter (Hover (Just pos)) ]
   else
     [ onMouseEnter (Hover Nothing) ]
 
@@ -478,7 +500,6 @@ cell =
   this'll work best as a background svg using
   a data uri on a stylesheet. For now, just use
   the cell by cell version above
--}
 
 buildSvg : Int -> Int -> Svg Msg
 buildSvg cols rows =
@@ -528,3 +549,4 @@ boardSize =
     , ("height", "855px")
     ]
 
+-}
