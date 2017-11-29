@@ -8,3 +8,4 @@
 * Annotation
 * Handicap stones
 * Comments
+* Different ko rules
