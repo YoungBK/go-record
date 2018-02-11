@@ -11,10 +11,11 @@ import Set exposing (Set)
 -- import GoRecordStylesheet
 
 main =
-  Html.beginnerProgram
-    { model = gameModel
+  Html.program
+    { init = init
     , view = view
     , update = update
+    , subscriptions = subscriptions
     }
 
 
@@ -52,6 +53,19 @@ gameModel = { moves = []                 -- ordered moves made
             , menu = None
             }
 
+-- INIT
+
+init : (Game, Cmd Msg)
+init = (gameModel, Cmd.none)
+
+-- type alias Flags = { flag1: Int, flag2: String, ... }
+-- initWithFlags : Flags -> (Game, Cmd Msg)
+-- initWithFlags flags = (gameModel, Cmd.none)
+
+-- SUBSCRIPTIONS
+
+subscriptions : Game -> Sub Msg
+subscriptions game = Sub.none
 
 -- UPDATE
 
@@ -59,12 +73,12 @@ type MenuOption = Save | Begin | Rewind | Back | Up | Down | Step | FastForward 
   
 type Msg = Menu MenuOption | Move Position | Hover (Maybe Position)
 
-update : Msg -> Game -> Game
+update : Msg -> Game -> (Game, Cmd Msg)
 update msg game =
   case msg of
-    Hover mpos -> { game | hover = mpos}
-    Menu option -> menuSelection option game
-    Move pos   -> makeMove pos game
+    Hover mpos -> ({ game | hover = mpos}, Cmd.none)
+    Menu option -> (menuSelection option game, Cmd.none)
+    Move pos   -> (makeMove pos game, Cmd.none)
 
 menuSelection : MenuOption -> Game -> Game
 menuSelection option game =
