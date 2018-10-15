@@ -69,29 +69,30 @@ subscriptions game = Sub.none
 
 -- UPDATE
 
-type MenuOption = Save | Begin | Rewind | Back | Up | Down | Step | FastForward | End | None
+type MenuOption = Save | Load | Begin | Rewind | Back | Up | Down | Step | FastForward | End | None
   
-type Msg = Menu MenuOption | Move Position | Hover (Maybe Position)
+type Msg = Menu MenuOption | Move Position | Hover (Maybe Position) | Save (Result Http.Error String) | Load (Result Http.Error String)
 
 update : Msg -> Game -> (Game, Cmd Msg)
 update msg game =
   case msg of
     Hover mpos -> ({ game | hover = mpos}, Cmd.none)
-    Menu option -> (menuSelection option game, Cmd.none)
+    Menu option -> menuSelection option game
     Move pos   -> (makeMove pos game, Cmd.none)
 
 menuSelection : MenuOption -> Game -> Game
 menuSelection option game =
   case option of
-    Save -> { game | menu = Save }
-    Begin -> game
-    Rewind -> game
-    Back -> game
-    Up -> game
-    Down -> game
-    Step -> game
-    FastForward -> game
-    End -> game
+    Save -> ({ game | menu = Save }, Cmd.none)
+    Load -> ({ game | menu = Load }, Cmd.none)
+    Begin -> ( { game | menu = Begin }, Cmd.none)
+    Rewind -> (game, Cmd.none)
+    Back -> (game, Cmd.none)
+    Up -> (game, Cmd.none)
+    Down -> (game, Cmd.none)
+    Step -> (game, Cmd.none)
+    FastForward -> (game, Cmd.none)
+    End -> (game, Cmd.none)
     None -> { game | menu = None }
 
 makeMove : Position -> Game -> Game
