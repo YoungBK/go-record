@@ -1,17 +1,22 @@
 import Html exposing (Html, Attribute, div, text)
 import Html.Events exposing (onClick, onMouseEnter, onMouseLeave)
 import Html.Attributes exposing (style)
+import Http exposing (Error)
 import Svg exposing (Svg, svg, line, circle)
 import Svg.Attributes exposing (x1, x2, cx, y1, y2, cy, r, stroke, strokeWidth, fill, opacity)
 import Dict exposing (Dict)
 import Maybe exposing (Maybe)
 import Set exposing (Set)
+import Debug exposing (toString)
+import Browser exposing (Document, sandbox, element, document)
+import List exposing (append)
+
 -- import String exposing (cons)
 
 -- import GoRecordStylesheet
 
 main =
-  Html.program
+  Browser.document
     { init = init
     , view = view
     , update = update
@@ -55,8 +60,8 @@ gameModel = { moves = []                 -- ordered moves made
 
 -- INIT
 
-init : (Game, Cmd Msg)
-init = (gameModel, Cmd.none)
+init : () -> (Game, Cmd Msg)
+init flags = (gameModel, Cmd.none)
 
 -- type alias Flags = { flag1: Int, flag2: String, ... }
 -- initWithFlags : Flags -> (Game, Cmd Msg)
@@ -71,7 +76,7 @@ subscriptions game = Sub.none
 
 type MenuOption = Save | Load | Begin | Rewind | Back | Up | Down | Step | FastForward | End | None
   
-type Msg = Menu MenuOption | Move Position | Hover (Maybe Position) | Save (Result Http.Error String) | Load (Result Http.Error String)
+type Msg = Menu MenuOption | Move Position | Hover (Maybe Position) | Saved (Result Http.Error String) | Loaded (Result Http.Error String)
 
 update : Msg -> Game -> (Game, Cmd Msg)
 update msg game =
@@ -79,12 +84,14 @@ update msg game =
     Hover mpos -> ({ game | hover = mpos}, Cmd.none)
     Menu option -> menuSelection option game
     Move pos   -> (makeMove pos game, Cmd.none)
+    Saved result -> (game, Cmd.none)
+    Loaded result -> (game, Cmd.none)
 
-menuSelection : MenuOption -> Game -> Game
+menuSelection : MenuOption -> Game -> (Game, Cmd Msg)
 menuSelection option game =
   case option of
-    Save -> ({ game | menu = Save }, Cmd.none)
-    Load -> ({ game | menu = Load }, Cmd.none)
+    Save -> (game, saveGame game)
+    Load -> (game, loadGame game)
     Begin -> ( { game | menu = Begin }, Cmd.none)
     Rewind -> (game, Cmd.none)
     Back -> (game, Cmd.none)
@@ -93,7 +100,7 @@ menuSelection option game =
     Step -> (game, Cmd.none)
     FastForward -> (game, Cmd.none)
     End -> (game, Cmd.none)
-    None -> { game | menu = None }
+    None -> ({ game | menu = None }, Cmd.none)
 
 makeMove : Position -> Game -> Game
 makeMove pos game =
@@ -109,7 +116,7 @@ makeMove pos game =
     newBoardPosition = buildBoardPosition newPositions nextPlayer
     newBoardPositionCheck = Set.insert newBoardPosition game.positionCheck
   in
-    if not <| positionEmpty pos game.positions then
+    if not <| positionEmpty game.positions pos then
       { game | error = Just "Illegal move: Position occupied" }
     else if List.isEmpty moveLiberties then
       { game | error = Just "Illegal move: Cannot commit suicide" }
@@ -134,6 +141,14 @@ next p =
     Black -> White
     White -> Black
 
+saveGame : Game -> Cmd Msg
+saveGame game =
+  Cmd.none
+
+loadGame : Game -> Cmd Msg
+loadGame game =
+  Cmd.none
+
 -- GAME MECHANICS
 
 {-
@@ -148,9 +163,9 @@ canMove player pos =
     else
 -}      
     
-positionEmpty : Position -> GamePosition -> Bool
-positionEmpty pos positions =
-  playerAt pos positions == Nothing
+positionEmpty : GamePosition -> Position -> Bool
+positionEmpty positions pos =
+  playerAt positions pos == Nothing
     
 isSuicide : Position -> Game -> Bool
 isSuicide move game = False
@@ -215,8 +230,8 @@ findLibertiesIter group player positions liberties =
 
 libertiesOf : Position -> Player -> Dict Position Player -> List Position
 libertiesOf pos player positions =
-  if playerAt pos positions == Just player then
-    List.filter (flip positionEmpty positions) (calcNeighbors pos)
+  if playerAt positions pos == Just player then
+    List.filter (positionEmpty positions) (calcNeighbors pos)
   else
     [] -- some kind of error
     
@@ -276,12 +291,12 @@ withinBounds : Position -> Bool
 withinBounds (x,y) =
   x >=1 && x <= 19 && y >= 1 && y <= 19
 
-playerAt : Position -> GamePosition -> Maybe Player
-playerAt = Dict.get
+playerAt : GamePosition -> Position -> Maybe Player
+playerAt positions pos = Dict.get pos positions
 
 inGame : Player -> GamePosition -> Position -> Bool
 inGame player positions pos =
-    playerAt pos positions == Just player
+    playerAt positions pos == Just player
 
 map : (Position -> a) -> (a -> b -> b) -> b -> Int -> Int -> b
 map mapf collectf empty cols rows =
@@ -301,7 +316,7 @@ mapCellIter mapf collectf cols rows acc =
     
 buildBoardPosition : GamePosition -> Player -> BoardPosition
 buildBoardPosition gamePosition nextPlayer =
-  (0, positionCode (Just nextPlayer))::map (positionCode << flip playerAt gamePosition) sparseMerge [] 19 19
+  (0, positionCode (Just nextPlayer))::map (positionCode << playerAt gamePosition) sparseMerge [] 19 19
 
 positionCode : Maybe Player -> Char
 positionCode player =
@@ -321,9 +336,11 @@ sparseMerge code boardPosition =
 
 -- VIEW
 
-view : Game -> Html Msg
+view : Game -> Document Msg
 view game =
-    div [] [list_positions game, buildBoard game, navbar game]
+  { title = "Record your go games!"
+  , body = [ div [] [list_positions game, buildBoard game, navbar game] ]
+  }
 
 list_positions : Game -> Html Msg
 list_positions game =
@@ -371,7 +388,7 @@ nav_end game =
     
 buildBoard : Game -> Html Msg
 buildBoard game =
-  div [ board, onMouseLeave (Hover Nothing) ] (map (flip buildCell game) (::) [] 19 19)
+  div ((onMouseLeave (Hover Nothing))::board) (map (buildCell game) (::) [] 19 19)
     
 --     div [ board ] (build_labels cols rows ++ build_board_cells cols rows game)
 --     div [ board ] (buildSvg cols rows::build_board_cells cols rows game)
@@ -379,14 +396,14 @@ buildBoard game =
 -- build_labels : Int -> Int -> Html Msg
 -- build_labels cols rows =
 
-buildCell : Position -> Game -> Html Msg
-buildCell pos game =
-  div (cell::actions pos game.positions) [ drawCell pos game ]
+buildCell : Game -> Position -> Html Msg
+buildCell game pos =
+  div (append cell (actions pos game.positions)) [ drawCell pos game ]
 
 
 actions : Position -> GamePosition -> List (Attribute Msg)
 actions pos positions =
-  if positionEmpty pos positions then
+  if positionEmpty positions pos then
     [ onClick (Move pos), onMouseEnter (Hover (Just pos)) ]
   else
     [ onMouseEnter (Hover Nothing) ]
@@ -410,7 +427,7 @@ type alias Line = (Position,Position)
 
 drawCell : Position -> Game -> Html Msg
 drawCell pos game =
-  svg [ cell ] ((cellLines (calcLines pos)) ++ starPoint pos ++ stone pos game ++ hover pos game)
+  svg cell ((cellLines (calcLines pos)) ++ starPoint pos ++ stone pos game ++ hover pos game)
 --     text (toString (col,row))
 
 calcLines : Position -> List Line
@@ -447,7 +464,7 @@ starPoint (col,row) =
         
 stone : Position -> Game -> List (Svg Msg)
 stone pos game =
-  case playerAt pos game.positions of
+  case playerAt game.positions pos of
     Just player -> drawStone player defaultOpacity
     Nothing     -> []
 
@@ -479,24 +496,23 @@ defaultOpacity = "1.0"
 
 -- STYLES
 
-board : Attribute Msg
+board : List (Attribute Msg)
 board =
-  style
-  [ ("display", "-webkit-flex")
-  , ("display", "flex")
-  , ("width", "855px")
-  , ("height", "855px")
-  , ("background-color", "goldenrod")
-  , ("flex-wrap", "wrap")
-  , ("align-content", "flex-start")
+  [ style "display" "-webkit-flex"
+  , style "display" "flex"
+  , style "width" "855px"
+  , style "height" "855px"
+  , style "background-color" "goldenrod"
+  , style "flex-wrap" "wrap"
+  , style "align-content" "flex-start"
   ]
 
-cell : Attribute Msg
+cell : List (Attribute Msg)
 cell =
-    style [ ("width", "45px")
-          , ("height", "45px")
-          , ("margin", "0px")
-          ]
+  [ style "width" "45px"
+  , style "height" "45px"
+  , style "margin" "0px"
+  ]
 
 -- lines_nw_corner : Attribute msg
 -- lines_nw_corner =
