@@ -10,6 +10,7 @@ import Set exposing (Set)
 import Debug exposing (toString)
 import Browser exposing (Document, sandbox, element, document)
 import List exposing (append)
+import Json.Encode as JE
 
 -- import String exposing (cons)
 
@@ -42,6 +43,7 @@ type alias Game = { moves : List Position
                   , mostRecentCaptures : List (List Position)
                   , error : Maybe String
                   , menu : MenuOption
+                  , lastAction: Msg
                   }
 
 gameModel : Game
@@ -55,7 +57,8 @@ gameModel = { moves = []                 -- ordered moves made
             , opponentGroups = []        -- opponent groups adjacent to last move
             , mostRecentCaptures = []    -- groups captured by last move
             , error = Nothing            -- error in move attempt
-            , menu = None
+            , menu = None                -- last menu option selected, for debugging
+            , lastAction = Menu None     -- last action taken as a result of menu selection, for debuggning
             }
 
 -- INIT
@@ -76,31 +79,35 @@ subscriptions game = Sub.none
 
 type MenuOption = Save | Load | Begin | Rewind | Back | Up | Down | Step | FastForward | End | None
   
-type Msg = Menu MenuOption | Move Position | Hover (Maybe Position) | Saved (Result Http.Error String) | Loaded (Result Http.Error String)
+type Msg = Menu MenuOption
+         | Move Position
+         | Hover (Maybe Position)
+         | Saved (Result Http.Error String)
+         | Loaded (Result Http.Error String)
 
 update : Msg -> Game -> (Game, Cmd Msg)
 update msg game =
   case msg of
-    Hover mpos -> ({ game | hover = mpos}, Cmd.none)
-    Menu option -> menuSelection option game
+    Hover mpos -> ({ game | hover = mpos }, Cmd.none)
+    Menu option -> ({ game | menu = option }, menuSelection option game) -- menuSelection option game
     Move pos   -> (makeMove pos game, Cmd.none)
-    Saved result -> (game, Cmd.none)
+    Saved result -> ({ game | lastAction = msg }, Cmd.none)
     Loaded result -> (game, Cmd.none)
 
-menuSelection : MenuOption -> Game -> (Game, Cmd Msg)
+menuSelection : MenuOption -> Game -> Cmd Msg
 menuSelection option game =
   case option of
-    Save -> (game, saveGame game)
-    Load -> (game, loadGame game)
-    Begin -> ( { game | menu = Begin }, Cmd.none)
-    Rewind -> (game, Cmd.none)
-    Back -> (game, Cmd.none)
-    Up -> (game, Cmd.none)
-    Down -> (game, Cmd.none)
-    Step -> (game, Cmd.none)
-    FastForward -> (game, Cmd.none)
-    End -> (game, Cmd.none)
-    None -> ({ game | menu = None }, Cmd.none)
+    Save -> saveGame game
+    Load -> loadGame game
+    Begin -> Cmd.none
+    Rewind -> Cmd.none
+    Back -> Cmd.none
+    Up -> Cmd.none
+    Down -> Cmd.none
+    Step -> Cmd.none
+    FastForward -> Cmd.none
+    End -> Cmd.none
+    None -> Cmd.none
 
 makeMove : Position -> Game -> Game
 makeMove pos game =
@@ -143,11 +150,13 @@ next p =
 
 saveGame : Game -> Cmd Msg
 saveGame game =
-  Cmd.none
+  Http.post { url = "http://localhost:4567/save"
+            , body = Http.jsonBody (encodeMoves game.moves)
+            , expect = Http.expectString Saved }
 
 loadGame : Game -> Cmd Msg
 loadGame game =
-  Cmd.none
+  Http.get { url = "/load", expect = Http.expectString Loaded }
 
 -- GAME MECHANICS
 
@@ -356,35 +365,35 @@ nav_save game =
 
 nav_begin : Game -> Html Msg
 nav_begin game =
-  div [ ] [ text "begin" ]
+  div [ onClick (Menu Begin) ] [ text "begin" ]
 
 nav_rew : Game -> Html Msg
 nav_rew game =
-  div [ ] [ text "rew" ]
+  div [ onClick (Menu Rewind) ] [ text "rew" ]
   
 nav_back : Game -> Html Msg
 nav_back game =
-  div [ ] [ text "back" ]
+  div [ onClick (Menu Save) ] [ text "back" ]
 
 nav_up : Game -> Html Msg
 nav_up game =
-  div [ ] [ text "up" ]
+  div [ onClick (Menu Up) ] [ text "up" ]
 
 nav_down : Game -> Html Msg
 nav_down game =
-  div [ ] [ text "down" ]
+  div [ onClick (Menu Down) ] [ text "down" ]
 
 nav_step : Game -> Html Msg
 nav_step game =
-  div [ ] [ text "step" ]
+  div [ onClick (Menu Step) ] [ text "step" ]
 
 nav_ff : Game -> Html Msg
 nav_ff game =
-  div [ ] [ text "ff" ]
+  div [ onClick (Menu FastForward) ] [ text "ff" ]
 
 nav_end : Game -> Html Msg
 nav_end game =
-  div [ ] [ text "end" ]
+  div [ onClick (Menu End) ] [ text "end" ]
     
 buildBoard : Game -> Html Msg
 buildBoard game =
@@ -581,3 +590,14 @@ boardSize =
     ]
 
 -}
+
+
+-- COMMUNICATION
+
+encodeMoves : List Position -> JE.Value
+encodeMoves moves =
+  JE.list encodePosition moves
+
+encodePosition : Position -> JE.Value
+encodePosition (x,y) =
+  JE.list JE.int [x,y]
